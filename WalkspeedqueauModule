@@ -1,0 +1,47 @@
+local speedinfo = {}
+function speed(Character,timer,midpunch)
+	local endtime = tick()+timer
+	
+	if not speedinfo[Character] then
+		speedinfo[Character]={
+			speed={}
+		}
+	end
+	table.insert(speedinfo[Character].speed,1,endtime)
+	delay(timer,function()
+		local firstendtime=speedinfo[Character].speed[table.find(speedinfo[Character].speed,endtime)]
+		local secondendtime = speedinfo[Character].speed[1]
+		if secondendtime~=nil then
+			if firstendtime>=secondendtime then
+				table.remove(speedinfo[Character].speed,table.find(speedinfo[Character].speed,secondendtime))
+				
+				if Character.basewalkspeed.Value<=0 then
+					Character.basewalkspeed.Value=1
+				else
+					Character.Humanoid.WalkSpeed=Character.basewalkspeed.Value
+				end
+				
+				
+				
+				Character.Humanoid.JumpHeight=7.2
+				Character.Humanoid.AutoRotate=true
+			else
+				table.remove(speedinfo[Character].speed,table.find(speedinfo[Character].speed,firstendtime))
+			end
+		else
+			Character.Humanoid.WalkSpeed=Character.basewalkspeed.Value
+			Character.Humanoid.JumpHeight=7.2
+			Character.Humanoid.AutoRotate=true
+		end
+
+	end)
+
+end
+return speed
+
+
+
+
+	
+	
+
