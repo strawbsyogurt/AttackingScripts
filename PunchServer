@@ -1,0 +1,125 @@
+local animationloader = require(workspace.animationloader)
+local stunmodule=require(workspace.stunmodule)
+local repser = game:GetService("ReplicatedStorage")
+local weaponin = require(workspace.weaponinfo)
+local OverlapParameters = OverlapParams.new()
+local count =0
+local walkspeedqueau = require(workspace.walkspeedqueau)
+local vf = Instance.new("VectorForce")
+local takedamage = require(workspace.takedamage)
+local inflictstatus=require(workspace.inflictstatus)
+
+
+local function hitbox(cframe,size,character)
+	local hitlist = {}
+	OverlapParameters.FilterDescendantsInstances={character}
+	local hitbox=workspace:GetPartBoundsInBox(cframe,size,OverlapParameters)
+	for _,v in pairs(hitbox) do
+		if v.Parent:FindFirstChild("HumanoidRootPart") then
+			if  not table.find(hitlist,v.Parent) then
+				table.insert(hitlist,v.Parent)
+			end
+		end
+	end
+	return(hitlist)
+end
+
+repser.Events.punchRemote.OnServerEvent:Connect(function(player,combolvl,weaponname,weapontable,camera)
+if player.Character.Stunned.Value==false and player.Character.Dodging.Value==false and player.Character.InAnim.Value==false and player.Character.MidPunch.Value==false then
+	player.Character.MidPunch.Value=true
+	local animtable=animationloader(player.Character,"Weapon")
+	local char = player.Character
+	local hum = char.Humanoid
+	local track= animtable[combolvl]
+		vf.Attachment0=char.HumanoidRootPart.RootAttachment
+		vf.Force=char.HumanoidRootPart.CFrame.LookVector.Unit*2500
+		vf.RelativeTo=Enum.ActuatorRelativeTo.World
+		vf.Parent=char.HumanoidRootPart
+		local soundinst = Instance.new("Sound")
+	if soundinst.IsPlaying then
+		soundinst:Destroy()
+	end
+	local soundambient = weapontable.ambientsoundid[combolvl]
+	soundinst.SoundId=soundambient
+	soundinst.Parent=char
+	soundinst.Playing = true
+	local trail = char[weaponname]:FindFirstChild("Trail",true)
+	if trail then
+		trail.Enabled=true
+	end
+	count=0
+	player.Character.Humanoid.WalkSpeed=0
+	delay(weapontable.waittime[combolvl] ,function()
+		player.Character.MidPunch.Value=false
+		vf.Parent=nil
+		if trail then
+			trail.Enabled=false
+		end
+	end)
+		
+		
+
+	delay(track.Length-weapontable.hitboxwait[combolvl],function()
+		if char.Stunned.Value==true then
+			return
+		end
+		
+		
+			local resulty = hitbox(char.HumanoidRootPart.CFrame+char.HumanoidRootPart.CFrame.LookVector*weapontable.hitboxsize.Z/2,weapontable.hitboxsize,char )
+			local result =resulty[1]
+		if result then
+			if soundinst.IsPlaying then
+				soundinst:Destroy()
+			end
+			local sound = weapontable.soundid[combolvl]
+			soundinst.SoundId=sound
+			soundinst.Parent=char
+			soundinst.Playing = true
+			takedamage(player,result,weapontable.damage*weapontable.motionvalue[combolvl],weapontable.stagger*weapontable.motionvalue[combolvl],weapontable.damagetype)
+			inflictstatus(result,"Fire",weapontable.firebuildup)
+			inflictstatus(result,"Poison",weapontable.poisonbuildup)
+			inflictstatus(result,"Freeze",weapontable.icebuildup)
+			stunmodule(result,weapontable.waittime[combolvl]+.2,true)
+			
+			local hitParticle = repser.ParticlePart.PunchVFX:Clone()
+			hitParticle.Parent = result.Torso.BodyFrontAttachment
+			hitParticle:Emit(100)
+			delay(.2, function()
+				hitParticle:Destroy()
+			end)
+			
+			if combolvl == weapontable.combos then	
+				if result.Stunned.Value==true and weapontable.weaponweight>result.Essentials.Weight.Value+1 then
+					local bodygyro = Instance.new("BodyGyro")
+					bodygyro.D=0
+					bodygyro.P=999999
+					bodygyro.MaxTorque=Vector3.new(999999,999999,9999999)
+					bodygyro.CFrame=CFrame.new(result.HumanoidRootPart.CFrame.Position,char.HumanoidRootPart.CFrame.Position)
+					bodygyro.Parent=result.HumanoidRootPart
+					local bodyvelocity = Instance.new("BodyVelocity")
+					bodyvelocity.MaxForce=Vector3.new(99999,0, 99999)
+					bodyvelocity.P=100
+					bodyvelocity.Parent=result.HumanoidRootPart
+					bodyvelocity.Velocity=(result.HumanoidRootPart.CFrame.Position - char.HumanoidRootPart.CFrame.Position).unit* (((result.Essentials.Weight.Value-weapontable.weaponweight)*-2)+25)
+		
+					delay(.4,function()
+						bodyvelocity:Destroy()
+						bodygyro:Destroy()
+					end)	
+						
+				end
+			end
+			
+		
+			
+		end
+	end)
+	
+	
+	hum.WalkSpeed=0
+	
+	walkspeedqueau(player.Character,track.Length+.1)
+
+end
+
+end)
