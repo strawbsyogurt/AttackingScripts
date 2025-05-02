@@ -1,0 +1,105 @@
+local repser = game:GetService("ReplicatedStorage")
+local count =0
+local tweenser = game:GetService("TweenService")
+local guardamm=0
+local basewalkspeed = require(workspace.basewalkspeed)
+local walkspeed = require(workspace.walkspeedqueau)
+local function highlight(character)
+	local highlight = repser.damagedhighlight:Clone()
+	highlight.Parent=character
+	for i=0, 5,.2 do
+
+		highlight.FillTransparency +=.01
+	end
+
+	for i=0, 5,.2 do
+
+		highlight.FillTransparency -=.02
+	end
+	delay(.2,function()
+		highlight:Destroy()
+	end)
+end
+
+local function damagenumber(character,damage)
+	local number = repser.DamageNumbers:Clone()
+	number.Parent=character.HumanoidRootPart
+	number.Adornee=number.Parent
+	number.TextBox.Text=math.round(damage)
+	local numbertween= tweenser:Create(number,TweenInfo.new(.4,Enum.EasingStyle.Quart,Enum.EasingDirection.Out),{StudsOffset=Vector3.new(math.random(-200,200)/100,math.random(-200,200)/100,math.random(-200,200)/100),Size=UDim2.new(1.5,0,1,0)})
+	numbertween:Play()
+	delay(.4,function()
+		number:Destroy()
+	end)
+	
+end
+local function blockvfx(character)
+	local vfx=repser.VFX.BadParry:Clone()
+	vfx.Parent=workspace
+	vfx.CFrame=character.HumanoidRootPart.CFrame+character.HumanoidRootPart.CFrame.LookVector*3
+	task.delay(.01,function()
+		vfx.Attachment.dots:Emit(17)
+		vfx.slash:Emit(1)
+	end)
+end
+
+local function parryvfx(character)
+	local vfx=repser.VFX.Parry:Clone()
+	vfx.Parent=workspace
+	vfx.CFrame=character.HumanoidRootPart.CFrame+character.HumanoidRootPart.CFrame.LookVector*3
+	task.delay(.01,function()
+		vfx.Attachment.dots:Emit(17)
+		vfx.slash:Emit(1)
+	end)
+	
+end
+function takedamage(user,character,damage,staggerdamage,damagetype)
+
+	if  character.Dodging.Value==false then
+		if character:FindFirstChild("GuardTime") then
+			if character.GuardTime.Value>0 then
+				character.Humanoid.WalkSpeed=0
+				walkspeed(character,.4)
+				if character.GuardTime.Value<.23 then
+					parryvfx(character)
+					return
+				else
+					blockvfx(character)
+				end
+			end
+		end
+		if character:FindFirstChild("GuardBoost") then
+			guardamm = character.GuardBoost.Value
+		else
+			guardamm =0
+		end
+		local actualdamage =(damage *character.resistances[damagetype.."Res"].Value)/(1+guardamm)
+		character.Essentials.Health.Value-=(damage *character.resistances[damagetype.."Res"].Value)/(1+guardamm)
+		character.resistances.StaggerAmm.Value-=staggerdamage
+		if character.resistances.StaggerAmm.Value>0  then
+			count=0
+		end
+		if character.resistances.StaggerAmm.Value<=0 and count==0 then
+			count=1
+			repser.Events.StaggerRemote:Fire(character)
+		end
+		
+		task.defer(function()
+			character.Essentials.HealthBar.Health.Size = UDim2.new((character.Essentials.Health.Value/character.Essentials.MaxHealth.Value)*1,0,1,0)
+			character.Essentials.StaggerBar.Health.Size = UDim2.new((character.resistances.StaggerAmm.Value/character.resistances.StaggerLimit.Value)*1,0,1,0)
+			highlight(character)
+			damagenumber(character,actualdamage)
+		end)
+		
+		
+		if user then
+			game.ReplicatedStorage.Events.TotalDamageEvent:FireClient(user, damage)
+		end
+		
+		
+		
+	end
+end
+
+
+return takedamage
