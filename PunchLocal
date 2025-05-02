@@ -1,0 +1,104 @@
+local mouse = game.Players.LocalPlayer:GetMouse()
+local player = game.Players.LocalPlayer
+local char = player.Character
+local repser = game:GetService("ReplicatedStorage")
+local weaponin = require(workspace.weaponinfo)
+local combolvl=1
+local lastpunchtime = tick()
+local addtime = 0
+local WeaponAnimationModule = require(workspace.WeaponAnimationModule)
+local anim=nil
+local runser = game:GetService("RunService")
+local hb = nil
+local mainhb = nil
+local holding = false
+local buttondown = false
+script.Parent.Parent.Equipped:Connect(function()
+	repser.Events.WeaponHoldOn:FireServer()
+	holding=true
+end)
+script.Parent.Parent.Unequipped:Connect(function()
+	repser.Events.WeaponHoldOff:FireServer()
+	holding=false
+end)
+
+mouse.Button1Down:Connect(function()
+	buttondown=true
+end)
+mouse.Button1Up:Connect(function()
+	buttondown=false
+end)
+
+
+
+local function punch()
+	if char.Stunned.Value==false and char.Dodging.Value==false and char.InAnim.Value==false and char.MidPunch.Value==false then
+		local weaponname= repser.HasFruitfunction:InvokeServer("WeaponName")
+		local weapontable = weaponin[weaponname]
+
+		if char.Humanoid.FloorMaterial==Enum.Material.Air then
+			if tick()-lastpunchtime>1.5 then
+				lastpunchtime=tick()
+				addtime=0
+				local jumpattackanim =WeaponAnimationModule.GetAnimations("jumptrack")
+				jumpattackanim:Play()
+				if weapontable.slam then
+					repser.Events.JumpAttackEvent:FireServer(weaponname,weapontable,true)
+				else
+					repser.Events.JumpAttackEvent:FireServer(weaponname,weapontable)
+				end
+
+				jumpattackanim.KeyframeReached:Connect(function(Cocked)
+					jumpattackanim:AdjustSpeed(0)
+				end)
+				hb=runser.Heartbeat:Connect(function()
+					if char.Humanoid.FloorMaterial~=Enum.Material.Air  then
+						jumpattackanim.TimePosition=.3
+						jumpattackanim:AdjustSpeed(1.5)
+						if hb then
+							hb:Disconnect()
+						end		
+					end
+				end)
+			end
+
+		else
+			if tick()-lastpunchtime>1.3+weapontable.waittime[combolvl] then
+				combolvl=1
+			end
+			if tick()-lastpunchtime>weapontable.waittime[combolvl]+addtime then
+				if combolvl==weapontable.combos then
+					repser.Events.punchRemote:FireServer(combolvl,weaponname,weapontable,workspace.CurrentCamera.CFrame.LookVector)
+					anim=WeaponAnimationModule.GetAnimations("combo"..combolvl)
+					anim:Play()
+					addtime=2.01
+					combolvl=1
+					lastpunchtime=tick()
+				else
+					lastpunchtime=tick()
+					addtime=0
+					anim=WeaponAnimationModule.GetAnimations("combo"..combolvl)
+					anim:Play()
+					repser.Events.punchRemote:FireServer(combolvl,weaponname,weapontable,workspace.CurrentCamera.CFrame.LookVector)
+					combolvl+=1
+				end
+			end
+		end
+	end	
+end
+
+
+
+
+
+
+
+
+
+mainhb = runser.Heartbeat:Connect(function()
+	if buttondown==true and holding==true then
+		punch()
+	end
+end)
+	
+
