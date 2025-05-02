@@ -1,0 +1,48 @@
+local stuninfo = {}
+local walkspeed = require(workspace.walkspeedqueau)
+local function stun(character,timer,isplayer)
+if character.Dodging.Value==false then
+		if character:FindFirstChild("GuardTime") then
+			if character.GuardTime.Value>0 then
+				return
+			end
+		end
+		character.Stunned.Value=true
+		local endtime = tick()+timer
+		character.Humanoid.WalkSpeed=0
+		walkspeed(character,endtime-tick(),true)
+		local track = character.Humanoid:LoadAnimation(character.stunanim)
+		track.Priority=Enum.AnimationPriority.Action
+		track:Play()
+		track:GetMarkerReachedSignal("End"):Once(function()
+			track:AdjustSpeed(0)
+		end)
+		if not stuninfo[character] then
+			stuninfo[character]={
+				stuns={}
+			}
+		end
+
+		table.insert(stuninfo[character].stuns,1,endtime)
+		delay(timer,function()
+			local firstendtime=stuninfo[character].stuns[table.find(stuninfo[character].stuns,endtime)]
+			local secondendtime = stuninfo[character].stuns[1]
+			if secondendtime~=nil then
+				if firstendtime>=secondendtime then
+					table.remove(stuninfo[character].stuns,table.find(stuninfo[character].stuns,secondendtime))
+					character.Stunned.Value=false
+					track:Stop()
+				else
+					table.remove(stuninfo[character].stuns,table.find(stuninfo[character].stuns,firstendtime))
+				end
+			else
+				track:Stop()
+				character.Stunned.Value=false
+			end
+
+		end)
+end
+	
+	
+end
+return stun
